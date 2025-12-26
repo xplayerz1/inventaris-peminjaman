@@ -1,0 +1,239 @@
+# GraphQL Schema
+# Inventaris & Peminjaman System v2.0
+
+# ============================================
+# ENUMS
+# ============================================
+
+enum UserRole {
+  admin
+  user
+}
+
+enum ConditionStatus {
+  BAIK
+  RUSAK
+  HILANG
+}
+
+enum LoanStatus {
+  pending
+  approved
+  active
+  returned
+  rejected
+}
+
+# ============================================
+# AUTHENTICATION & USER MANAGEMENT
+# ============================================
+
+type User {
+  id: ID!
+  email: String!
+  role: UserRole!
+  name: String!
+  nim: String
+  phone: String
+  organization: String
+  is_active: Boolean!
+  created_at: String!
+}
+
+type AuthPayload {
+  token: String!
+  refreshToken: String!
+  user: User!
+}
+
+input RegisterInput {
+  email: String!
+  password: String!
+  name: String!
+  nim: String
+  phone: String
+  organization: String
+}
+
+input LoginInput {
+  email: String!
+  password: String!
+}
+
+# ============================================
+# INVENTORY MANAGEMENT
+# ============================================
+
+type Item {
+  id: ID!
+  name: String!
+  code: String!
+  category: String
+  total_quantity: Int!
+  available_quantity: Int!
+  location: String
+  condition_status: ConditionStatus!
+  description: String
+  image_url: String
+  created_at: String!
+  updated_at: String!
+}
+
+input CreateItemInput {
+  name: String!
+  code: String!
+  category: String
+  total_quantity: Int!
+  available_quantity: Int!
+  location: String
+  condition_status: ConditionStatus
+  description: String
+  image_url: String
+}
+
+input UpdateItemInput {
+  name: String
+  code: String
+  category: String
+  total_quantity: Int
+  available_quantity: Int
+  location: String
+  condition_status: ConditionStatus
+  description: String
+  image_url: String
+}
+
+# ============================================
+# LOAN MANAGEMENT WITH APPROVAL WORKFLOW
+# ============================================
+
+type Loan {
+  id: ID!
+  item_id: Int!
+  user_id: Int!
+  loan_date: String!
+  planned_return_date: String!
+  actual_return_date: String
+  status: LoanStatus!
+  notes: String
+  admin_notes: String
+  approved_by: Int
+  approved_at: String
+  created_at: String!
+  updated_at: String!
+  item: Item
+  user: User
+}
+
+input RequestLoanInput {
+  item_id: Int!
+  loan_date: String!
+  planned_return_date: String!
+  notes: String
+}
+
+input ApproveLoanInput {
+  loan_id: Int!
+  admin_notes: String
+}
+
+input RejectLoanInput {
+  loan_id: Int!
+  admin_notes: String!
+}
+
+input ReturnItemInput {
+  loan_id: Int!
+  actual_return_date: String!
+  admin_notes: String
+}
+
+# ============================================
+# REAL-TIME CHAT SYSTEM
+# ============================================
+
+type Message {
+  id: ID!
+  conversation_id: Int!
+  sender_id: Int!
+  sender_role: UserRole!
+  sender_name: String!
+  message: String!
+  is_read: Boolean!
+  created_at: String!
+}
+
+type Conversation {
+  id: ID!
+  user_id: Int!
+  user_name: String!
+  last_message: String
+  last_message_at: String
+  unread_count_user: Int!
+  unread_count_admin: Int!
+  messages: [Message!]!
+}
+
+input SendMessageInput {
+  conversation_id: Int
+  user_id: Int
+  message: String!
+}
+
+# ============================================
+# ROOT TYPES
+# ============================================
+
+type Query {
+  # Authentication
+  me: User!
+  users: [User!]!
+
+  # Items
+  items: [Item!]!
+  item(id: ID!): Item
+  availableItems: [Item!]!
+
+  # Loans
+  myLoans: [Loan!]!
+  allLoans: [Loan!]!
+  pendingLoans: [Loan!]!
+  activeLoans: [Loan!]!
+  loan(id: ID!): Loan
+
+  # Chat
+  myConversation: Conversation
+  allConversations: [Conversation!]!
+  conversationMessages(conversation_id: Int!): [Message!]!
+}
+
+type Mutation {
+  # Authentication
+  register(input: RegisterInput!): AuthPayload!
+  login(input: LoginInput!): AuthPayload!
+  refreshToken(refreshToken: String!): AuthPayload!
+  logout: Boolean!
+
+  # Items Management (Admin Only)
+  createItem(input: CreateItemInput!): Item!
+  updateItem(id: ID!, input: UpdateItemInput!): Item!
+  deleteItem(id: ID!): Boolean!
+
+  # Loan Requests (User)
+  requestLoan(input: RequestLoanInput!): Loan!
+
+  # Loan Management (Admin Only)
+  approveLoan(input: ApproveLoanInput!): Loan!
+  rejectLoan(input: RejectLoanInput!): Loan!
+  markAsReturned(input: ReturnItemInput!): Loan!
+
+  # Chat
+  sendMessage(input: SendMessageInput!): Message!
+  markAsRead(conversation_id: Int!): Boolean!
+}
+
+type Subscription {
+  # Real-time chat subscriptions
+  messageReceived(conversation_id: Int!): Message!
+  newConversation: Conversation!
+}

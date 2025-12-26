@@ -1,0 +1,98 @@
+version: "3.8"
+
+services:
+  postgres-auth:
+    image: postgres:15-alpine
+    container_name: inventaris-auth-db
+    environment:
+      POSTGRES_DB: ${AUTH_DB_NAME:-auth_db}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "${AUTH_DB_PORT:-5434}:5432"
+    volumes:
+      - auth_data:/var/lib/postgresql/data
+      - ./database/auth-schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ./database/auth-seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - inventaris-network
+
+  postgres-inventory:
+    image: postgres:15-alpine
+    container_name: inventaris-inventory-db
+    environment:
+      POSTGRES_DB: ${INVENTORY_DB_NAME:-inventory_db}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "${INVENTORY_DB_PORT:-5435}:5432"
+    volumes:
+      - inventory_data:/var/lib/postgresql/data
+      - ./database/inventory-schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ./database/inventory-seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - inventaris-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: inventaris-backend
+    environment:
+      AUTH_DB_HOST: postgres-auth
+      AUTH_DB_PORT: 5432
+      AUTH_DB_NAME: ${AUTH_DB_NAME:-auth_db}
+      INVENTORY_DB_HOST: postgres-inventory
+      INVENTORY_DB_PORT: 5432
+      INVENTORY_DB_NAME: ${INVENTORY_DB_NAME:-inventory_db}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      PORT: 4000
+      NODE_ENV: production
+    ports:
+      - "${BACKEND_PORT:-4001}:4000"
+    depends_on:
+      postgres-auth:
+        condition: service_healthy
+      postgres-inventory:
+        condition: service_healthy
+    networks:
+      - inventaris-network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: http://localhost:${BACKEND_PORT:-4001}/graphql
+        VITE_WS_URL: ws://localhost:${BACKEND_PORT:-4001}/graphql
+    container_name: inventaris-frontend
+    ports:
+      - "${FRONTEND_PORT:-81}:80"
+    depends_on:
+      - backend
+    networks:
+      - inventaris-network
+    restart: unless-stopped
+
+volumes:
+  auth_data:
+    driver: local
+  inventory_data:
+    driver: local
+
+networks:
+  inventaris-network:
+    driver: bridge

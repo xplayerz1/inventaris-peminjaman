@@ -75,7 +75,7 @@ Aplikasi web untuk mengelola inventaris barang dan proses peminjaman dengan fitu
 #### 1. Clone Repository
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/ZIKK23/Edu-connect.git
 cd inventaris-peminjaman
 ```
 

@@ -79,7 +79,16 @@ git clone <repository-url>
 cd inventaris-peminjaman
 ```
 
-#### 2. Jalankan Docker Compose
+#### 2. Setup Environment File
+
+```bash
+# Copy file environment template
+cp .env.example .env
+```
+
+File `.env` sudah berisi konfigurasi default yang siap digunakan.
+
+#### 3. Jalankan Docker Compose
 
 ```bash
 docker-compose up -d --build
@@ -88,10 +97,10 @@ docker-compose up -d --build
 Perintah ini akan:
 
 - Build dan jalankan 4 container (auth_db, inventory_db, backend, frontend)
-- Setup database PostgreSQL dengan schema yang diperlukan
-- Menjalankan aplikasi secara otomatis
+- Setup database PostgreSQL dengan schema dan seed data secara otomatis
+- Menjalankan aplikasi
 
-#### 3. Tunggu Hingga Selesai
+#### 4. Tunggu Hingga Selesai
 
 Proses pertama kali memakan waktu 2-5 menit. Cek status dengan:
 
@@ -100,20 +109,6 @@ docker-compose ps
 ```
 
 Semua container harus berstatus `Up` atau `healthy`.
-
-#### 4. Seed Database (Data Awal)
-
-```powershell
-# Windows PowerShell
-Get-Content database\auth-seed.sql | docker exec -i inventaris-auth-db psql -U postgres -d auth_db
-Get-Content database\inventory-seed.sql | docker exec -i inventaris-inventory-db psql -U postgres -d inventory_db
-```
-
-```bash
-# Linux/Mac
-cat database/auth-seed.sql | docker exec -i inventaris-auth-db psql -U postgres -d auth_db
-cat database/inventory-seed.sql | docker exec -i inventaris-inventory-db psql -U postgres -d inventory_db
-```
 
 #### 5. Akses Aplikasi
 
@@ -131,7 +126,7 @@ cat database/inventory-seed.sql | docker exec -i inventaris-inventory-db psql -U
 
 ## 🔧 Perintah Docker Berguna
 
-```powershell
+```bash
 # Jalankan semua container
 docker-compose up -d
 
@@ -150,7 +145,6 @@ docker-compose up -d --build
 # Reset database (hapus semua data)
 docker-compose down -v
 docker-compose up -d --build
-# Kemudian seed ulang database
 ```
 
 ## 📁 Struktur Project
@@ -178,35 +172,26 @@ inventaris-peminjaman/
 │   ├── auth-seed.sql      # Auth DB seed data
 │   ├── inventory-schema.sql # Inventory DB schema
 │   └── inventory-seed.sql # Inventory DB seed data
+├── .env.example           # Environment template
 ├── docker-compose.yml     # Docker orchestration
 └── README.md              # This file
 ```
 
-## � Environment Variables
+## 🔐 Environment Variables
 
-### Backend (.env)
-
-```env
-NODE_ENV=production
-PORT=4000
-AUTH_DB_HOST=auth_db
-AUTH_DB_PORT=5432
-AUTH_DB_USER=postgres
-AUTH_DB_PASSWORD=postgres
-AUTH_DB_NAME=auth_db
-INVENTORY_DB_HOST=inventory_db
-INVENTORY_DB_PORT=5432
-INVENTORY_DB_USER=postgres
-INVENTORY_DB_PASSWORD=postgres
-INVENTORY_DB_NAME=inventory_db
-JWT_SECRET=your-jwt-secret-key
-```
-
-### Frontend
+Edit file `.env` untuk konfigurasi:
 
 ```env
-VITE_API_URL=http://localhost:4001/graphql
-VITE_WS_URL=ws://localhost:4001/graphql
+# Database
+DB_USER=postgres
+DB_PASSWORD=postgres123
+
+# Ports
+BACKEND_PORT=4001
+FRONTEND_PORT=8000
+
+# Security
+JWT_SECRET=your-super-secret-jwt-key-change-me
 ```
 
 ## ❓ Troubleshooting
@@ -228,15 +213,27 @@ docker-compose up -d --build
 # Pastikan database container healthy
 docker-compose ps
 
-# Tunggu sampai status: healthy
+# Tunggu sampai status: healthy (bisa 30-60 detik)
 ```
 
 ### Port sudah digunakan
 
-Edit port di `docker-compose.yml`:
+Edit port di `.env`:
 
-- Frontend: ubah `8000:80`
-- Backend: ubah `4001:4000`
+```env
+BACKEND_PORT=4002
+FRONTEND_PORT=8001
+```
+
+### Fresh install tidak bisa login
+
+Database schema dan seed sudah otomatis dijalankan saat container pertama kali dibuat. Jika ada masalah:
+
+```bash
+# Reset total
+docker-compose down -v
+docker-compose up -d --build
+```
 
 ---
 
